@@ -6,7 +6,7 @@ import os
 from fastapi import Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy.orm import Session
 
 from .database import get_db
@@ -21,21 +21,35 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24 hours default
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing. bcrypt only ever considers the first 72 bytes of a
+# password. passlib truncated silently; bcrypt 5 raises ValueError instead, so
+# truncate explicitly to keep hashes written by the old code verifying as-is.
+BCRYPT_MAX_PASSWORD_BYTES = 72
 
 # OAuth2 scheme - token can come from cookie or header
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
+def _password_bytes(password: str) -> bytes:
+    """Encode a password to the byte form bcrypt hashes."""
+    return password.encode("utf-8")[:BCRYPT_MAX_PASSWORD_BYTES]
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password:
+        return False  # OAuth-only account, or no password set
+    try:
+        return bcrypt.checkpw(
+            _password_bytes(plain_password), hashed_password.encode("utf-8")
+        )
+    except ValueError:
+        return False  # Malformed or non-bcrypt hash
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password."""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_password_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
