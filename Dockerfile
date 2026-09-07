@@ -12,7 +12,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Final image with backend serving frontend
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
