@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS backend-test
+FROM python:3.14-slim AS backend-test
 
 WORKDIR /app/backend
 
