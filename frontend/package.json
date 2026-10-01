@@ -15,11 +15,11 @@
   },
   "dependencies": {
     "d3": "^7.8.5",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.2"
   },
   "devDependencies": {
-    "jsdom": "^30.0.1",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "jsdom": "^30.1.1",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
   }
 }
