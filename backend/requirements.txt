@@ -4,7 +4,8 @@ sqlalchemy==2.1.1
 pydantic[email]==2.13.5
 pydantic-settings==2.15.0
 python-multipart==0.0.32
-bibtexparser==1.4.4
+bibtexparser==2.0.1
+pylatexenc==2.11
 pytest==9.1.1
 pytest-asyncio==1.4.0
 httpx==0.28.1
