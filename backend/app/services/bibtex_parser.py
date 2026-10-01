@@ -1,13 +1,36 @@
 import bibtexparser
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.customization import convert_to_unicode
+from bibtexparser import middlewares
+from bibtexparser.model import DuplicateBlockKeyBlock
+from pylatexenc.latex2text import LatexNodes2Text, get_default_latex_context_db
 from typing import List, Dict, Tuple
 import json
 
 
-def customizations(record):
-    """Apply customizations to BibTeX record."""
-    record = convert_to_unicode(record)
+# LaTeX decoder that, like v1's convert_to_unicode, leaves typographic
+# specials such as "--" in page ranges and ``quotes`` untouched.
+_LATEX_DECODER = LatexNodes2Text(
+    latex_context=get_default_latex_context_db().filter_context(
+        exclude_categories=['nonascii-specials']
+    ),
+    math_mode='verbatim',
+)
+
+
+def _middlewares():
+    """Middlewares replicating the v1 parser setup (lowercase field keys,
+    common month strings, LaTeX to unicode)."""
+    return [
+        middlewares.NormalizeFieldKeys(),
+        middlewares.MonthLongStringMiddleware(),
+        middlewares.LatexDecodingMiddleware(decoder=_LATEX_DECODER),
+    ]
+
+
+def _entry_to_dict(entry) -> Dict:
+    """Convert a v2 Entry into the v1-style dict used by parse_entry."""
+    record = {'ID': entry.key, 'ENTRYTYPE': entry.entry_type.lower()}
+    for field in entry.fields:
+        record[field.key] = field.value
     return record
 
 
@@ -19,17 +42,31 @@ def parse_bibtex(bibtex_content: str) -> Tuple[List[Dict], List[str]]:
         Tuple of (entries, errors) where entries is a list of dicts and
         errors is a list of error messages
     """
-    parser = BibTexParser(common_strings=True)
-    parser.customization = customizations
-
     errors = []
     entries = []
 
     try:
-        bib_database = bibtexparser.loads(bibtex_content, parser=parser)
+        library = bibtexparser.parse_string(
+            bibtex_content, append_middleware=_middlewares()
+        )
 
-        for entry in bib_database.entries:
-            parsed_entry = parse_entry(entry)
+        raw_entries = [(entry.start_line, entry) for entry in library.entries]
+        for block in library.failed_blocks:
+            if isinstance(block, DuplicateBlockKeyBlock):
+                # v2 rejects duplicate keys; pass them through so the caller
+                # reports them as skipped duplicates, as with v1.
+                dup = bibtexparser.parse_string(
+                    block.ignore_error_block.raw, append_middleware=_middlewares()
+                )
+                raw_entries.extend((block.start_line, e) for e in dup.entries)
+            else:
+                errors.append(
+                    f"BibTeX parsing error at line {block.start_line + 1}: {block.error}"
+                )
+
+        raw_entries.sort(key=lambda pair: pair[0])
+        for _, entry in raw_entries:
+            parsed_entry = parse_entry(_entry_to_dict(entry))
             if parsed_entry:
                 entries.append(parsed_entry)
 
