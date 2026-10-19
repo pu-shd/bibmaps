@@ -1,10 +1,10 @@
-fastapi==0.141.1
+fastapi==0.143.0
 uvicorn[standard]==0.54.0
-sqlalchemy==2.1.1
-pydantic[email]==2.13.5
+sqlalchemy==2.1.4
+pydantic[email]==2.14.0
 pydantic-settings==2.15.0
 python-multipart==0.0.32
-bibtexparser==2.0.1
+bibtexparser==2.1.0
 pylatexenc==2.11
 pytest==9.1.1
 pytest-asyncio==1.4.0
