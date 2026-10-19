@@ -5,7 +5,8 @@ import os
 
 from fastapi import Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 import bcrypt
 from sqlalchemy.orm import Session
 
@@ -78,7 +79,7 @@ def decode_token(token: str) -> Optional[schemas.TokenData]:
         # Convert sub back to int (it's stored as string in JWT)
         user_id = int(sub)
         return schemas.TokenData(user_id=user_id, username=username)
-    except (JWTError, ValueError):
+    except (PyJWTError, ValueError):
         return None
 
 
